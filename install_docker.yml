@@ -1,0 +1,53 @@
+---
+- hosts: all
+  vars:
+    docker_apt_repo: "deb https://apt.dockerproject.org/repo ubuntu-{{ ansible_distribution_release }} main"
+    docker_apt_key_id: "58118E89F3A912897C070ADBF76221572C52609D"
+    docker_keyserver: "hkp://p80.pool.sks-keyservers.net:80"
+
+  tasks:
+    - block:
+      # based on:  https://docs.docker.com/engine/installation/linux/ubuntulinux/
+      #
+        - name: Install apt-transport-https to ensure apt works with https
+          apt: name=apt-transport-https state=present
+
+        - name: Install ca-certificates
+          apt: name=ca-certificates state=present
+
+        #- name: Install python-pip
+        #  apt: name=python-pip state=present
+
+        - name: Add docker apt key
+          apt_key: 
+            keyserver: "{{ docker_keyserver }}"
+            id: "{{ docker_apt_key_id }}"
+            keyring: "/etc/apt/trusted.gpg"
+
+        - name: Add docker apt repo to sources list
+          apt_repository: 
+            repo: "{{ docker_apt_repo }}" 
+            update_cache: yes 
+            state: present
+
+        - name: Ensure lxc-docker is not installed
+          apt: name=lxc-docker state=absent purge=yes
+
+        - name: Install docker-engine
+          apt: name=docker-engine={{ docker_engine_version|default('*') }} state=present
+
+        #- name: Install recommended linux-image-extra kernel package
+        #  apt: name=linux-image-extra-{{ ansible_kernel }} state=present
+
+        #- name: Install docker-compose
+        #  pip: name=docker-compose version={{ docker_compose_version }} state=present
+
+        #- name: Install docker api client
+        #  pip: name=docker-py version={{ docker_api_version }} state=present
+
+        - name: Start docker
+          service: name=docker enabled=yes state=started
+
+      when: ansible_os_family == 'Debian'
+      become: True
+
